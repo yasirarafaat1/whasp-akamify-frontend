@@ -1,0 +1,96 @@
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { API, getToken, setToken, setWorkspaceId } from "../api/api";
+
+type User = {
+  id: string;
+  email: string;
+  name?: string;
+  phone?: string;
+  role?: "user" | "admin";
+  createdAt?: string;
+};
+
+type AuthState = {
+  token: string;
+  user: User | null;
+  loading: boolean;
+};
+
+type AuthContextValue = AuthState & {
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name?: string) => Promise<{ apiKey?: string }>;
+  logout: () => void;
+  refreshMe: () => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<AuthState>(() => ({
+    token: getToken(),
+    user: null,
+    loading: true,
+  }));
+
+  const refreshMe = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      setState((s) => ({ ...s, token: "", user: null, loading: false }));
+      return;
+    }
+
+    setState((s) => ({ ...s, token, loading: true }));
+    try {
+      const res = await API.auth.me();
+      if (res?.workspace?.id) setWorkspaceId(res.workspace.id);
+      setState((s) => ({ ...s, token, user: res.user, loading: false }));
+    } catch {
+      setToken("");
+      setState((s) => ({ ...s, token: "", user: null, loading: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshMe();
+  }, [refreshMe]);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const res = await API.auth.login({ email, password });
+    setToken(res.token);
+    if (res?.workspace?.id) setWorkspaceId(res.workspace.id);
+    setState({ token: res.token, user: res.user, loading: false });
+  }, []);
+
+  const register = useCallback(async (email: string, password: string, name?: string) => {
+    const res = await API.auth.register({ email, password, name });
+    setToken(res.token);
+    if (res?.workspace?.id) setWorkspaceId(res.workspace.id);
+    setState({ token: res.token, user: res.user, loading: false });
+    return { apiKey: res.apiKey };
+  }, []);
+
+  const logout = useCallback(() => {
+    setToken("");
+    setState({ token: "", user: null, loading: false });
+  }, []);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      ...state,
+      login,
+      register,
+      logout,
+      refreshMe,
+    }),
+    [state, login, register, logout, refreshMe]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+}
+
