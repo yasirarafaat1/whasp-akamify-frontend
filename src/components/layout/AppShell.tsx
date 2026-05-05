@@ -134,6 +134,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Background Gradients */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(6,183,126,0.12),transparent_40%)]" />
+        {/* <div className="absolute inset-0 bg-squares opacity-20" /> */}
+        <div className="absolute inset-0 bg-grid-dots opacity-30" />
         <div className="absolute inset-0 bg-grid opacity-20" />
       </div>
 

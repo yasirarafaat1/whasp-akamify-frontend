@@ -107,7 +107,7 @@ export default function DashboardPage() {
     }
   }, [allStepsDone]);
 
-  if (busy && !snapshot) return <div className="flex h-[60vh] items-center justify-center"><Spinner label="Loading dashboard..." /></div>;
+  if (busy && !snapshot) return <div className="flex h-[80vh] items-center justify-center"><Spinner label="Loading dashboard..." /></div>;
 
   return (
     <div className="flex flex-col gap-6">
