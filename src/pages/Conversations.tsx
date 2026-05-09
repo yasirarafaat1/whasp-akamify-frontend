@@ -4,7 +4,7 @@ import { API } from "../api/api";
 import { ConversationListSkeleton, ChatMessagesSkeleton } from "../components/ui/Skeletons";
 import { InboxComposer } from "./conversations/InboxComposer";
 import { cn } from "../utils/cn";
-import { ArrowLeft, Ban, X, Search, Phone, Video, Info, CheckCircle2, AlertCircle, MessageSquare, Check, CheckCheck, ExternalLink, FileText, MapPin, Workflow, Trash2, Edit3, Mail, Tag, StickyNote, Languages } from "lucide-react";
+import { ArrowLeft, Ban, X, Search, Phone, Video, Info, CheckCircle2, AlertCircle, MessageSquare, Check, CheckCheck, ExternalLink, FileText, MapPin, Workflow, Trash2, Edit3, Mail, Tag, StickyNote, Languages, EllipsisVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   extractMetaDebugFields,
@@ -118,7 +118,7 @@ export default function ConversationsPage() {
   const [editForm, setEditForm] = useState<any>({ name: "", email: "", language: "", tags: "", notes: "" });
   const isInitialLoad = useRef(true);
   const headerMenuRef = useRef<HTMLDivElement>(null);
-  const lastInboundToneIdRef = useRef<string>("");
+  const lastInboundToneByPhoneRef = useRef<Record<string, string>>({});
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -126,6 +126,11 @@ export default function ConversationsPage() {
   const waLink = useMemo(() => {
     const p = String(urlPhone || "").replace(/[^\d]/g, "");
     return p ? `https://wa.me/${p}` : "";
+  }, [urlPhone]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+    setShowProfile(false);
   }, [urlPhone]);
 
   useEffect(() => {
@@ -171,11 +176,21 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     if (!messages.length) return;
-    // Play once per newest inbound message (when chat is open).
     const latestInbound = [...messages].reverse().find((m) => m.direction === "inbound");
     if (!latestInbound?._id) return;
-    if (lastInboundToneIdRef.current === latestInbound._id) return;
-    lastInboundToneIdRef.current = latestInbound._id;
+
+    const phoneKey = String(urlPhone || "").trim();
+    const lastHeardId = lastInboundToneByPhoneRef.current[phoneKey] || "";
+
+    // Baseline the current latest inbound message on first load, then only play when it changes.
+    if (!lastHeardId) {
+      lastInboundToneByPhoneRef.current[phoneKey] = latestInbound._id;
+      return;
+    }
+
+    if (lastHeardId === latestInbound._id) return;
+
+    lastInboundToneByPhoneRef.current[phoneKey] = latestInbound._id;
     playInboundToneOnce();
   }, [messages.length, urlPhone]);
 
@@ -477,7 +492,7 @@ export default function ConversationsPage() {
             <button
               type="button"
               onClick={() => void ensureMediaUrl(id)}
-              className="w-full text-left rounded-[8px] bg-white/70 px-3 py-2 ring-1 ring-ink-900/10"
+              className="w-full text-left rounded-[5px] bg-white/70 px-3 py-2 ring-1 ring-ink-900/10"
             >
               <div className="text-xs font-black uppercase tracking-widest text-ink-900/60">Audio</div>
               <div className="mt-1 text-xs font-semibold text-ink-900/70">
@@ -510,7 +525,7 @@ export default function ConversationsPage() {
         <button
           type="button"
           onClick={() => void ensureMediaUrl(id)}
-          className="w-full text-left rounded-[8px] bg-white/70 px-3 py-2 ring-1 ring-ink-900/10"
+          className="w-full text-left rounded-[5px] bg-white/70 px-3 py-2 ring-1 ring-ink-900/10"
         >
           <div className="text-xs font-black uppercase tracking-widest text-ink-900/60">Image</div>
           <div className="mt-1 text-xs font-semibold text-ink-900/70">
@@ -530,7 +545,7 @@ export default function ConversationsPage() {
         <button
           type="button"
           onClick={() => void ensureMediaUrl(id)}
-          className="w-full text-left rounded-[8px] bg-white/70 px-3 py-2 ring-1 ring-ink-900/10"
+          className="w-full text-left rounded-[5px] bg-white/70 px-3 py-2 ring-1 ring-ink-900/10"
         >
           <div className="text-xs font-black uppercase tracking-widest text-ink-900/60">Video</div>
           <div className="mt-1 text-xs font-semibold text-ink-900/70">
@@ -561,7 +576,7 @@ export default function ConversationsPage() {
         <button
           type="button"
           onClick={() => void ensureMediaUrl(id)}
-          className="w-full text-left rounded-[8px] bg-white/70 px-3 py-2 ring-1 ring-ink-900/10"
+          className="w-full text-left rounded-[5px] bg-white/70 px-3 py-2 ring-1 ring-ink-900/10"
         >
           <div className="text-xs font-black uppercase tracking-widest text-ink-900/60">Audio</div>
           <div className="mt-1 text-xs font-semibold text-ink-900/70">
@@ -603,7 +618,7 @@ export default function ConversationsPage() {
         <button
           type="button"
           onClick={() => void ensureMediaUrl(id)}
-          className="w-full text-left rounded-[8px] bg-white/70 px-3 py-2 ring-1 ring-ink-900/10"
+          className="w-full text-left rounded-[5px] bg-white/70 px-3 py-2 ring-1 ring-ink-900/10"
         >
           <div className="text-xs font-black uppercase tracking-widest text-ink-900/60">{name}</div>
           <div className="mt-1 text-xs font-semibold text-ink-900/70">
@@ -809,7 +824,7 @@ export default function ConversationsPage() {
     <div className="flex bg-white overflow-hidden relative h-dvh lg:h-full min-h-0">
 
       {/* 1. Sidebar: Chat List */}
-      <div className="w-full md:w-[350px] bg-white border-r border-slate-200 flex flex-col shrink-0 min-h-0">
+      <div className={cn("w-full md:w-[350px] bg-white border-r border-slate-200 flex flex-col shrink-0 min-h-0", urlPhone ? "hidden md:flex" : "flex")}>
         <div className="p-4 bg-slate-50/50 border-b border-slate-100 flex flex-col gap-4">
           <div className="relative group">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors" size={16} />
@@ -870,7 +885,12 @@ export default function ConversationsPage() {
       {/* 2. Main Body: Message Area */}
       <div className={cn("flex-1 flex flex-col bg-[#F8FAFC] relative min-h-0", !urlPhone ? "hidden md:flex" : "flex")}>
         {urlPhone ? (
-          <>
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            transition={{ type: "spring", stiffness: 320, damping: 34 }}
+            className="flex h-full min-h-0 flex-col"
+          >
             {/* Chat Header */}
             <div className="h-16 flex items-center justify-between px-3 md:px-6 bg-white border-b border-slate-100 shrink-0 z-10">
               <div className="flex items-center gap-3">
@@ -878,6 +898,7 @@ export default function ConversationsPage() {
                   type="button"
                   onClick={() => {
                     setShowProfile(false);
+                    setMenuOpen(false);
                     navigate("/app/conversations");
                   }}
                   className="md:hidden -ml-2 p-2.5 hover:bg-slate-50 text-slate-500 hover:text-slate-900 rounded-[5px] transition-all"
@@ -893,19 +914,6 @@ export default function ConversationsPage() {
                     className="h-full w-full object-cover"
                   />
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShowProfile(true)}
-                  className="md:hidden h-10 w-10 rounded-[8px] bg-slate-100 overflow-hidden shadow-sm ring-0 hover:ring-2 hover:ring-brand-600/10 transition-all"
-                  aria-label="Open contact profile"
-                >
-                  <img
-                    src={`https://ui-avatars.com/api/?name=${activeConversation?.contact?.name || urlPhone}&background=random`}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                </button>
                 <div className="min-w-0">
                   <button
                     type="button"
@@ -937,25 +945,53 @@ export default function ConversationsPage() {
                     )}
                     aria-label="Info"
                   >
-                    <Info size={20} />
+                    <EllipsisVertical size={20} />
                   </button>
                   {menuOpen ? (
-                    <div className="absolute right-0 top-12 z-30 w-56 overflow-hidden rounded-[10px] border border-slate-100 bg-white shadow-xl">
-                      <button
-                        type="button"
-                        onClick={() => { setMenuOpen(false); openEdit(); }}
-                        className="flex w-full items-center gap-2 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
-                      >
-                        <Edit3 size={16} /> Edit contact
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void clearChat()}
-                        className="flex w-full items-center gap-2 px-4 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50"
-                      >
-                        <Trash2 size={16} /> Clear chat
-                      </button>
-                    </div>
+                    <>
+                      <div className="md:hidden absolute right-0 top-12 z-30 w-44 overflow-hidden rounded-[10px] border border-slate-100 bg-white shadow-xl">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            setShowProfile(true);
+                          }}
+                          className="flex w-full items-center gap-2 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                        >
+                          <Info size={16} /> View profile
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setMenuOpen(false); openEdit(); }}
+                          className="flex w-full items-center gap-2 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                        >
+                          <Edit3 size={16} /> Edit contact
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void clearChat()}
+                          className="flex w-full items-center gap-2 px-4 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50"
+                        >
+                          <Trash2 size={16} /> Clear chat
+                        </button>
+                      </div>
+                      <div className="hidden md:block absolute right-0 top-12 z-30 w-56 overflow-hidden rounded-[10px] border border-slate-100 bg-white shadow-xl">
+                        <button
+                          type="button"
+                          onClick={() => { setMenuOpen(false); openEdit(); }}
+                          className="flex w-full items-center gap-2 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                        >
+                          <Edit3 size={16} /> Edit contact
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void clearChat()}
+                          className="flex w-full items-center gap-2 px-4 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50"
+                        >
+                          <Trash2 size={16} /> Clear chat
+                        </button>
+                      </div>
+                    </>
                   ) : null}
                 </div>
               </div>
@@ -964,7 +1000,7 @@ export default function ConversationsPage() {
             {/* Messages Container */}
             <div
               ref={scrollRef}
-              className="relative flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 md:px-8 py-4 space-y-3 custom-scrollbar bg-[linear-gradient(180deg,#eefaf4_0%,#f7fbf9_100%)]"
+              className="relative flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 md:px-6 py-4 space-y-3 custom-scrollbar bg-[linear-gradient(180deg,#eefaf4_0%,#f7fbf9_100%)]"
               style={{
                 backgroundImage:
                   "radial-gradient(rgba(15,23,42,0.12) 1px, transparent 1px), linear-gradient(180deg, rgba(238,250,244,0.92) 0%, rgba(247,251,249,0.96) 100%)",
@@ -982,7 +1018,7 @@ export default function ConversationsPage() {
                   )}
                 >
                   <div className={cn(
-                    "relative max-w-[75%] w-fit p-3.5 pt-2 text-ink-900 shadow-sm transition-all rounded-[5px] overflow-visible",
+                    "relative max-w-[75%] w-fit p-3.5 text-ink-900 shadow-sm transition-all rounded-[5px] overflow-visible",
                     m.direction === "outbound"
                       ? "bubble-outbound rounded-tr-none bg-white shadow-md"
                       : "bubble-inbound rounded-tl-none bg-[#e1ffc7]"
@@ -1035,7 +1071,7 @@ export default function ConversationsPage() {
                 />
               </div>
             </div>
-          </>
+          </motion.div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-slate-50/50">
             <div className="h-24 w-24 bg-brand-100 rounded-[20px] flex items-center justify-center text-brand-600 mb-6 shadow-inner">
@@ -1165,7 +1201,7 @@ export default function ConversationsPage() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", stiffness: 380, damping: 35 }}
-              className="absolute right-0 top-0 bottom-0 w-[100%] max-w-[420px] bg-white shadow-2xl border-l border-slate-200 flex flex-col"
+              className="absolute right-0 top-0 bottom-0 w-full max-w-none bg-white shadow-2xl border-l border-slate-200 flex flex-col"
             >
               <div className="h-16 px-4 flex items-center justify-between border-b border-slate-100">
                 <div className="text-sm font-black text-slate-900 tracking-tight">Contact info</div>
@@ -1179,48 +1215,70 @@ export default function ConversationsPage() {
                 </button>
               </div>
 
-              <div className="p-6 flex flex-col items-center overflow-y-auto custom-scrollbar">
-                <div className="h-24 w-24 rounded-[10px] bg-slate-100 overflow-hidden shadow-sm mb-6">
-                  <img
-                    src={`https://ui-avatars.com/api/?name=${activeConversation?.contact?.name || urlPhone}&background=random`}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
+              <div className="p-6 flex flex-col overflow-y-auto custom-scrollbar">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-12 w-12 rounded-[10px] bg-slate-100 overflow-hidden shadow-sm shrink-0">
+                    <img src={`https://ui-avatars.com/api/?name=${contactDetail?.name || urlPhone}&background=random`} alt="" className="h-full w-full object-cover" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-black text-slate-900">{contactDetail?.name || activeConversation?.contact?.name || "Unknown"}</div>
+                    <div className="text-xs font-bold text-slate-400">{`+${urlPhone}`}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openEdit}
+                    className="inline-flex items-center gap-2 rounded-[5px] border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50"
+                  >
+                    <Edit3 size={14} /> Edit
+                  </button>
                 </div>
 
-                <h2 className="text-xl font-black text-slate-900 tracking-tight text-center">
-                  {activeConversation.contact?.name || "Anonymous Contact"}
-                </h2>
-                <p className="text-sm font-bold text-slate-400 mt-1">{`+${urlPhone}`}</p>
+                <div className="mt-5 rounded-[12px] border border-slate-100 bg-slate-50/60 p-4">
+                  <div className="flex items-start flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <div className={cn("h-2.5 w-2.5 rounded-full", customerServiceWindowOpen ? "bg-emerald-500" : "bg-rose-500")} />
+                      <div className="text-xs font-black uppercase tracking-widest text-slate-600">
+                        {customerServiceWindowOpen ? "Window Open" : "Window Closed"}
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      {customerServiceWindowOpen ? `${formatDurationShort(windowRemainingMs)} left` : "Closed"}
+                    </span>
+                  </div>
+                </div>
 
-                <div className="w-full mt-8 space-y-4 px-2">
-                  <div className="p-4 bg-slate-50 rounded-[10px] border border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "w-2 h-2 rounded-full",
-                          customerServiceWindowOpen
-                            ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
-                            : "bg-rose-500"
-                        )}
-                      />
-                      <span className="text-xs font-black text-slate-700 uppercase tracking-tighter">
-                        {customerServiceWindowOpen ? "Window Open" : "Session Expired"}
-                      </span>
+                <div className="mt-5 space-y-3">
+                  <div className="rounded-[5px] border border-slate-100 bg-white p-4">
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      <Mail size={12} /> Email
+                    </div>
+                    <div className="mt-2 text-sm font-bold text-slate-900">{contactDetail?.email || "Not set"}</div>
+                  </div>
+                  <div className="rounded-[5px] border border-slate-100 bg-white p-4">
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      <Languages size={12} /> Language
+                    </div>
+                    <div className="mt-2 text-sm font-bold text-slate-900">{contactDetail?.language || "Not set"}</div>
+                  </div>
+                  <div className="rounded-[5px] border border-slate-100 bg-white p-4">
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      <Tag size={12} /> Tags
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(Array.isArray(contactDetail?.tags) ? contactDetail.tags : []).length ? (
+                        (contactDetail.tags || []).slice(0, 10).map((t: string) => (
+                          <span key={t} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{t}</span>
+                        ))
+                      ) : (
+                        <span className="text-sm font-bold text-slate-900">Not set</span>
+                      )}
                     </div>
                   </div>
-
-                  <div className="space-y-3">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company</span>
-                      <span className="text-sm font-bold text-slate-900">{activeConversation.contact?.company || "Not set"}</span>
+                  <div className="rounded-[5px] border border-slate-100 bg-white p-4">
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      <StickyNote size={12} /> Notes
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Last Interaction</span>
-                      <span className="text-sm font-bold text-slate-900">
-                        {activeConversation.lastMessageAt ? new Date(activeConversation.lastMessageAt).toLocaleDateString() : "Never"}
-                      </span>
-                    </div>
+                    <div className="mt-2 text-sm font-semibold text-slate-800 whitespace-pre-wrap">{contactDetail?.notes || "Not set"}</div>
                   </div>
                 </div>
               </div>
